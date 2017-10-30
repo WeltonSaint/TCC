@@ -1,0 +1,12 @@
+This data set comprises experiment carried out considering Nine Android devices, each named Copelabs1, 2, 3, 4, 5, 6, 7, 8 and 12, respectively. These devices carried by people sharing the same affiliation during their daily routines (commuting between home and office, going to leisure activities, attending meetings in the office). All the data was collected each and every one minute.
+
+We set up experiments making use of Samsung Galaxy S3 devices. For each experiment, there is the following set of data files:
+* SocialProximity.dat has three columns: Timestamp, DeviceName, Encounter Duration, Average Encounter Duration, Social Strength (Per hour) and Social Strength(Per minute) towards
+* DistanceOutput.dat has three columns: Timestamp, DeviceName, and Distance towards
+* Microphone.dat has two columns: Timestamp, and Sound level(QUIET, NORMAL, ALERT, and NOISY)
+* PhysicalActivity.dat has two columns: Timestamp, and Activity as STATIONARY, WALKING, and RUNNING
+
+The experiment was conducted for the period of 12 days from 12th September to 23rd September 2016 . All devices carried by users and followed their daily routine.
+
+
+
