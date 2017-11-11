@@ -2,7 +2,10 @@ import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
+import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -25,6 +28,12 @@ import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 import org.sourceforge.jlibeps.epsgraphics.EpsGraphics2D;
 
+import com.itextpdf.text.Document;
+import com.itextpdf.text.DocumentException;
+import com.itextpdf.text.pdf.PdfContentByte;
+import com.itextpdf.text.pdf.PdfTemplate;
+import com.itextpdf.text.pdf.PdfWriter;
+
 public class Main {
 
 	final static int[] ids = { 1, 2, 3, 4, 5, 6, 7, 8, 12 };
@@ -40,9 +49,10 @@ public class Main {
 	final static int HOURS_INTERVAL = 60;
 	final static int DAYS_INTERVAL = 1440;
 	final static Color[] seriesColors = { Color.RED, Color.BLUE, Color.CYAN, Color.GREEN, Color.MAGENTA, Color.ORANGE,
-			Color.YELLOW, Color.GRAY, new Color(163, 73, 164)};
+			Color.YELLOW, Color.GRAY, new Color(163, 73, 164) };
 	public static HashMap<Long, HashMap<String, Nodo>> prop;
 	public static ArrayList<Integer> presentSeries;
+	private static boolean exportPDF = true;
 
 	public static void readFile(int id, String type, long start, long end, long interval) {
 
@@ -276,7 +286,7 @@ public class Main {
 				}
 			}
 		}
-		
+
 		presentSeries = new ArrayList<>();
 
 		for (int i : ids) {
@@ -297,8 +307,6 @@ public class Main {
 		int height = 640;
 
 		XYPlot plot = (XYPlot) lineChartObject.getPlot();
-		
-		
 
 		plot.setBackgroundPaint(Color.WHITE);
 		plot.setDomainGridlinePaint(Color.LIGHT_GRAY);
@@ -307,12 +315,12 @@ public class Main {
 		XYLineAndShapeRenderer renderer = new XYLineAndShapeRenderer();
 		for (int i = 0; i < 8; i++)
 			renderer.setSeriesStroke(i, new BasicStroke(2.0f));
-		
+
 		for (int i = 0; i < presentSeries.size(); i++) {
 			int index = (presentSeries.get(i) > 8) ? ids.length - 1 : presentSeries.get(i) - 1;
 			renderer.setSeriesPaint(i, seriesColors[index]);
 		}
-		
+
 		plot.setRenderer(renderer);
 
 		// NumberAxis xAxis = new NumberAxis();
@@ -324,25 +332,55 @@ public class Main {
 
 		plot.setDomainAxis(xAxis);
 
-		/*File lineChart = new File("graficos/" + chartTitle + ".jpeg");
-		try {
-			ChartUtilities.saveChartAsJPEG(lineChart, lineChartObject, width, height);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}*/
-		
-		Graphics2D g = new EpsGraphics2D();
-		lineChartObject.draw(g,new Rectangle(width,height));
-        Writer out;
-		try {
-			out = new FileWriter("graficos/" + chartTitle + ".eps");
-			out.write(g.toString());
-	        out.close();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}        
+		/*
+		 * File lineChart = new File("graficos/" + chartTitle + ".jpeg"); try {
+		 * ChartUtilities.saveChartAsJPEG(lineChart, lineChartObject, width,
+		 * height); } catch (IOException e) { e.printStackTrace(); }
+		 */
 
+		if (!exportPDF) {
+			Graphics2D g = new EpsGraphics2D();
+			lineChartObject.draw(g, new Rectangle(width, height));
+			Writer out;
+			try {
+				out = new FileWriter("graficos/" + chartTitle + ".eps");
+				out.write(g.toString());
+				out.close();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+
+		} else {
+
+			BufferedOutputStream out = null;
+			com.itextpdf.text.Rectangle pagesize = new com.itextpdf.text.Rectangle(width, height); 
+			Document document = new Document(pagesize, 50, 50, 50, 50); 
+			try {
+				out =  new BufferedOutputStream(new FileOutputStream("graficos/" + chartTitle + ".pdf"));
+				
+				PdfWriter writer = PdfWriter.getInstance(document, out);
+				document.addAuthor("JFreeChart");
+				document.open();
+
+				PdfContentByte cb = writer.getDirectContent();
+				PdfTemplate tp = cb.createTemplate(width, height);
+				Graphics2D g2 = tp.createGraphics(width, height);
+
+				lineChartObject.draw(g2, new Rectangle(width, height));
+				g2.dispose();
+				cb.addTemplate(tp, 0, 0);
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (DocumentException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} finally {
+				document.close();
+			}
+
+		}
 	}
 
 	public static int getDayStartValue(int day) {
@@ -367,7 +405,7 @@ public class Main {
 
 	public static void main(String[] args) {
 		for (int id : ids) {
-			prop = new HashMap<>();			
+			prop = new HashMap<>();
 			System.out.println("Copelabs" + id);
 			plotPerDay(id, 2);
 			// plotAllInterval(id, DAYS_INTERVAL);
