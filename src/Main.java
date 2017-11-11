@@ -2,6 +2,8 @@ import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
+import java.awt.Shape;
+import java.awt.geom.Ellipse2D;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
@@ -10,13 +12,13 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.SortedSet;
 import java.util.TreeSet;
-import java.util.concurrent.TimeUnit;
 
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.JFreeChart;
@@ -26,6 +28,7 @@ import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
+import org.jfree.util.ShapeUtilities;
 import org.sourceforge.jlibeps.epsgraphics.EpsGraphics2D;
 
 import com.itextpdf.text.Document;
@@ -40,7 +43,7 @@ public class Main {
 	final static String DISTANCE = "Distance";
 	final static String SOCIALSTRENGTH = "SocialStrength";
 	final static String MOTION = "PhysicalActivity";
-	final static SimpleDateFormat df = new SimpleDateFormat("dd/MM-HH:mm:ss.S");
+	final static SimpleDateFormat df = new SimpleDateFormat("dd/MM-HH:mm:ss.SSS");
 	final static int PLOT_SOCIAL_STRENGTH = 1000;
 	final static int PLOT_ENCOUNTERS = 2000;
 	final static int PLOT_ENCOUNTER_DURATION = 3000;
@@ -49,15 +52,15 @@ public class Main {
 	final static int HOURS_INTERVAL = 60;
 	final static int DAYS_INTERVAL = 1440;
 	final static Color[] seriesColors = { Color.RED, Color.BLUE, Color.CYAN, Color.GREEN, Color.MAGENTA, Color.ORANGE,
-			Color.YELLOW, Color.GRAY, new Color(163, 73, 164) };
+			Color.YELLOW, Color.GRAY, new Color(163, 73, 164) };	
 	public static HashMap<Long, HashMap<String, Nodo>> prop;
 	public static ArrayList<Integer> presentSeries;
 	private static boolean exportPDF = true;
 
 	public static void readFile(int id, String type, long start, long end, long interval) {
 
-		BufferedReader reader;
-
+		BufferedReader reader;		
+		
 		try {
 			String line = "";
 			Date dateFirst = null, dateLast = null;
@@ -65,7 +68,7 @@ public class Main {
 			while ((line = reader.readLine()) != null) {
 
 				String[] values = line.split("\t");
-
+								
 				if (dateFirst != null) {
 					if (values[0].trim().length() > 18)
 						values[0] = values[0].trim().substring(values[0].trim().length() - 18,
@@ -77,12 +80,13 @@ public class Main {
 								values[0].trim().length() - 1);
 					dateFirst = (Date) df.parse(values[0].trim());
 					dateLast = (Date) df.parse(values[0].trim());
-				}
-				long date = TimeUnit.MILLISECONDS.toMinutes(dateLast.getTime() - dateFirst.getTime());
+				}		      
+				
+				long date = dateLast.getTime()/60000;
 				double value;
 
 				if (date >= start && date <= end) {
-
+										
 					switch (type) {
 					case DISTANCE:
 						if (line.contains("Copelabs")) {
@@ -320,6 +324,12 @@ public class Main {
 			int index = (presentSeries.get(i) > 8) ? ids.length - 1 : presentSeries.get(i) - 1;
 			renderer.setSeriesPaint(i, seriesColors[index]);
 		}
+		
+		for (int i = 0; i < presentSeries.size(); i++) {
+			int index = (presentSeries.get(i) > 8) ? ids.length - 1 : presentSeries.get(i) - 1;
+			renderer.setSeriesShape(i, getShape(index));
+			renderer.setSeriesShapesVisible(i, true);
+		}
 
 		plot.setRenderer(renderer);
 
@@ -347,7 +357,6 @@ public class Main {
 				out.write(g.toString());
 				out.close();
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 
@@ -371,10 +380,8 @@ public class Main {
 				g2.dispose();
 				cb.addTemplate(tp, 0, 0);
 			} catch (FileNotFoundException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			} catch (DocumentException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			} finally {
 				document.close();
@@ -382,13 +389,70 @@ public class Main {
 
 		}
 	}
-
-	public static int getDayStartValue(int day) {
-		return (Math.abs(day) - 1) * DAYS_INTERVAL;
+	
+	private static Shape getShape(int index){
+		Shape s  = null;
+		
+		switch (index) {
+		case 0:
+			s = ShapeUtilities.createDiamond(2);
+			break;
+		case 1:
+			s = ShapeUtilities.createUpTriangle(2);
+			break;			
+		case 2:
+			s = ShapeUtilities.createDownTriangle(2);
+			break;
+		case 3:
+			s = ShapeUtilities.createDiagonalCross(1, 2);
+			break;
+		case 4:
+			s = ShapeUtilities.createRegularCross(4, 2);
+			break;
+		case 5:
+			s =  new Ellipse2D.Double(-4.0, -4.0, 8.0, 8.0);
+			break;
+		case 6:
+			s = ShapeUtilities.createDiagonalCross(2, 2);
+			break;
+		case 7:
+			s = ShapeUtilities.createRegularCross(2, 2);
+			break;
+		case 8:
+			s =  new Ellipse2D.Double(-2.0, -2.0, 4.0, 4.0);
+			break;
+		default:
+			break;
+		}
+		
+		return s;		
 	}
 
-	public static int getDayEndValue(int day) {
-		return Math.abs(day) * DAYS_INTERVAL;
+	public static long getDayStartValue(int day) {
+		
+		String string = "1"+( 1 + Math.abs(day))+"/09-00:00:00.000";	      
+	      try {
+	         Date date = df.parse(string);
+	         return date.getTime()/60000;
+	      } 
+	      catch (ParseException e) {
+	         e.printStackTrace();
+	         return 0;
+	      }   
+	   
+	}
+
+	public static long getDayEndValue(int day) {
+		String string = "1"+( 2 + Math.abs(day))+"/09-00:00:00.000";	  
+	     
+	      try {
+	         Date date = df.parse(string);
+	         return date.getTime()/60000;
+	      } 
+	      catch (ParseException e) {
+	         e.printStackTrace();
+	         return 0;
+	      } 
 	}
 
 	public static void plotPerDay(int id, int day) {
