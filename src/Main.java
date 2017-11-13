@@ -6,6 +6,7 @@ import java.awt.Shape;
 import java.awt.geom.Ellipse2D;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
@@ -21,6 +22,7 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 
 import org.jfree.chart.ChartFactory;
+import org.jfree.chart.ChartUtilities;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.NumberTickUnit;
 import org.jfree.chart.plot.PlotOrientation;
@@ -51,16 +53,19 @@ public class Main {
 	final static int MINUTES_INTERVAL = 1;
 	final static int HOURS_INTERVAL = 60;
 	final static int DAYS_INTERVAL = 1440;
+	final static int EXPORT_PDF = 10;
+	final static int EXPORT_EPS = 20;
+	final static int EXPORT_JPG = 30;
 	final static Color[] seriesColors = { Color.RED, Color.BLUE, Color.CYAN, Color.GREEN, Color.MAGENTA, Color.ORANGE,
-			Color.YELLOW, Color.GRAY, new Color(163, 73, 164) };	
+			Color.YELLOW, Color.GRAY, new Color(163, 73, 164) };
 	public static HashMap<Long, HashMap<String, Nodo>> prop;
 	public static ArrayList<Integer> presentSeries;
-	private static boolean exportPDF = true;
+	public static int export = 30;
 
-	public static void readFile(int id, String type, long start, long end, long interval) {
+	public static void readFile(int id, String type, long start, long end, long interval, int day) {
 
-		BufferedReader reader;		
-		
+		BufferedReader reader;
+
 		try {
 			String line = "";
 			Date dateFirst = null, dateLast = null;
@@ -68,7 +73,7 @@ public class Main {
 			while ((line = reader.readLine()) != null) {
 
 				String[] values = line.split("\t");
-								
+
 				if (dateFirst != null) {
 					if (values[0].trim().length() > 18)
 						values[0] = values[0].trim().substring(values[0].trim().length() - 18,
@@ -80,13 +85,13 @@ public class Main {
 								values[0].trim().length() - 1);
 					dateFirst = (Date) df.parse(values[0].trim());
 					dateLast = (Date) df.parse(values[0].trim());
-				}		      
-				
-				long date = dateLast.getTime()/60000;
+				}
+
+				long date = dateLast.getTime() / 60000;
 				double value;
 
 				if (date >= start && date <= end) {
-										
+
 					switch (type) {
 					case DISTANCE:
 						if (line.contains("Copelabs")) {
@@ -185,10 +190,11 @@ public class Main {
 
 			if (type == MOTION) {
 
-				plotGraph(PLOT_ENCOUNTER_DURATION, id, start, end, interval);
-				plotGraph(PLOT_ENCOUNTERS, id, start, end, interval);
-				plotGraph(PLOT_SOCIAL_STRENGTH, id, start, end, interval);
-				plotGraph(PLOT_PROPINQUITY, id, start, end, interval);
+				
+				plotGraph(PLOT_ENCOUNTERS, id, start, end, interval, day);
+				plotGraph(PLOT_SOCIAL_STRENGTH, id, start, end, interval, day);
+				plotGraph(PLOT_PROPINQUITY, id, start, end, interval, day);
+				plotGraph(PLOT_ENCOUNTER_DURATION, id, start, end, interval, day);
 
 			}
 
@@ -199,7 +205,7 @@ public class Main {
 		}
 	}
 
-	public static void plotGraph(int option, int id, long start, long end, long interval) {
+	public static void plotGraph(int option, int id, long start, long end, long interval, int day) {
 
 		String titleChart = null, unit = null;
 		XYSeriesCollection dataset = new XYSeriesCollection();
@@ -300,12 +306,12 @@ public class Main {
 			}
 		}
 
-		saveImageChart(lineChart, titleChart, start, end, interval);
+		saveImageChart(lineChart, titleChart, start, end, interval, day);
 
 	}
 
 	private static void saveImageChart(JFreeChart lineChartObject, String chartTitle, long start, long end,
-			long interval) {
+			long interval, int day) {
 
 		int width = 1080;
 		int height = 640;
@@ -324,7 +330,7 @@ public class Main {
 			int index = (presentSeries.get(i) > 8) ? ids.length - 1 : presentSeries.get(i) - 1;
 			renderer.setSeriesPaint(i, seriesColors[index]);
 		}
-		
+
 		for (int i = 0; i < presentSeries.size(); i++) {
 			int index = (presentSeries.get(i) > 8) ? ids.length - 1 : presentSeries.get(i) - 1;
 			renderer.setSeriesShape(i, getShape(index));
@@ -347,28 +353,31 @@ public class Main {
 		 * ChartUtilities.saveChartAsJPEG(lineChart, lineChartObject, width,
 		 * height); } catch (IOException e) { e.printStackTrace(); }
 		 */
+		switch (export) {
 
-		if (!exportPDF) {
+		case EXPORT_EPS:
+
 			Graphics2D g = new EpsGraphics2D();
 			lineChartObject.draw(g, new Rectangle(width, height));
 			Writer out;
 			try {
-				out = new FileWriter("graficos/" + chartTitle + ".eps");
+				out = new FileWriter("graficos/" + day + "º dia/" + chartTitle + ".eps");
 				out.write(g.toString());
 				out.close();
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
 
-		} else {
+			break;
+		case EXPORT_PDF:
 
-			BufferedOutputStream out = null;
-			com.itextpdf.text.Rectangle pagesize = new com.itextpdf.text.Rectangle(width, height); 
-			Document document = new Document(pagesize, 50, 50, 50, 50); 
+			BufferedOutputStream bos = null;
+			com.itextpdf.text.Rectangle pagesize = new com.itextpdf.text.Rectangle(width, height);
+			Document document = new Document(pagesize, 50, 50, 50, 50);
 			try {
-				out =  new BufferedOutputStream(new FileOutputStream("graficos/" + chartTitle + ".pdf"));
-				
-				PdfWriter writer = PdfWriter.getInstance(document, out);
+				bos = new BufferedOutputStream(new FileOutputStream("graficos/" + day + "º dia/" + chartTitle + ".pdf"));
+
+				PdfWriter writer = PdfWriter.getInstance(document, bos);
 				document.addAuthor("JFreeChart");
 				document.open();
 
@@ -387,19 +396,34 @@ public class Main {
 				document.close();
 			}
 
+			break;
+		case EXPORT_JPG:
+
+			File lineChart = new File("graficos/" + day + "º dia/" + chartTitle + ".jpeg");
+			try {
+				ChartUtilities.saveChartAsJPEG(lineChart, lineChartObject, width, height);
+			} catch (Exception e) {
+				System.out.println(chartTitle);
+				e.printStackTrace();
+			}
+
+			break;
+		default:
+			break;
 		}
+
 	}
-	
-	private static Shape getShape(int index){
-		Shape s  = null;
-		
+
+	private static Shape getShape(int index) {
+		Shape s = null;
+
 		switch (index) {
 		case 0:
-			s = ShapeUtilities.createDiamond(2);
+			s = ShapeUtilities.createDiamond(3);
 			break;
 		case 1:
 			s = ShapeUtilities.createUpTriangle(2);
-			break;			
+			break;
 		case 2:
 			s = ShapeUtilities.createDownTriangle(2);
 			break;
@@ -410,7 +434,7 @@ public class Main {
 			s = ShapeUtilities.createRegularCross(4, 2);
 			break;
 		case 5:
-			s =  new Ellipse2D.Double(-4.0, -4.0, 8.0, 8.0);
+			s = new Ellipse2D.Double(-4.0, -4.0, 8.0, 8.0);
 			break;
 		case 6:
 			s = ShapeUtilities.createDiagonalCross(2, 2);
@@ -419,60 +443,61 @@ public class Main {
 			s = ShapeUtilities.createRegularCross(2, 2);
 			break;
 		case 8:
-			s =  new Ellipse2D.Double(-2.0, -2.0, 4.0, 4.0);
+			s = new Ellipse2D.Double(-2.0, -2.0, 4.0, 4.0);
 			break;
 		default:
 			break;
 		}
-		
-		return s;		
+
+		return s;
 	}
 
 	public static long getDayStartValue(int day) {
-		
-		String string = "1"+( 1 + Math.abs(day))+"/09-00:00:00.000";	      
-	      try {
-	         Date date = df.parse(string);
-	         return date.getTime()/60000;
-	      } 
-	      catch (ParseException e) {
-	         e.printStackTrace();
-	         return 0;
-	      }   
-	   
+
+		String string = "1" + (1 + Math.abs(day)) + "/09-00:00:00.000";
+		try {
+			Date date = df.parse(string);
+			return date.getTime() / 60000;
+		} catch (ParseException e) {
+			e.printStackTrace();
+			return 0;
+		}
+
 	}
 
 	public static long getDayEndValue(int day) {
-		String string = "1"+( 2 + Math.abs(day))+"/09-00:00:00.000";	  
-	     
-	      try {
-	         Date date = df.parse(string);
-	         return date.getTime()/60000;
-	      } 
-	      catch (ParseException e) {
-	         e.printStackTrace();
-	         return 0;
-	      } 
+		String string = "1" + (2 + Math.abs(day)) + "/09-00:00:00.000";
+
+		try {
+			Date date = df.parse(string);
+			return date.getTime() / 60000;
+		} catch (ParseException e) {
+			e.printStackTrace();
+			return 0;
+		}
 	}
 
 	public static void plotPerDay(int id, int day) {
-		readFile(id, DISTANCE, getDayStartValue(day), getDayEndValue(day), HOURS_INTERVAL);
-		readFile(id, SOCIALSTRENGTH, getDayStartValue(day), getDayEndValue(day), HOURS_INTERVAL);
-		readFile(id, MOTION, getDayStartValue(day), getDayEndValue(day), HOURS_INTERVAL);
+		readFile(id, DISTANCE, getDayStartValue(day), getDayEndValue(day), HOURS_INTERVAL, day);
+		readFile(id, SOCIALSTRENGTH, getDayStartValue(day), getDayEndValue(day), HOURS_INTERVAL, day);
+		readFile(id, MOTION, getDayStartValue(day), getDayEndValue(day), HOURS_INTERVAL, day);
 	}
 
 	public static void plotAllInterval(int id, int interval) {
-		readFile(id, DISTANCE, 0, 12 * DAYS_INTERVAL, interval);
-		readFile(id, SOCIALSTRENGTH, 0, 12 * DAYS_INTERVAL, interval);
-		readFile(id, MOTION, 0, 12 * DAYS_INTERVAL, interval);
+		readFile(id, DISTANCE, 0, 12 * DAYS_INTERVAL, interval, 0);
+		readFile(id, SOCIALSTRENGTH, 0, 12 * DAYS_INTERVAL, interval, 0);
+		readFile(id, MOTION, 0, 12 * DAYS_INTERVAL, interval, 0);
 	}
 
 	public static void main(String[] args) {
-		for (int id : ids) {
-			prop = new HashMap<>();
-			System.out.println("Copelabs" + id);
-			plotPerDay(id, 2);
-			// plotAllInterval(id, DAYS_INTERVAL);
+		for (int i = 1; i <= 12; i++) {
+			System.out.println(i + "º dia");
+			for (int id : ids) {
+				prop = new HashMap<>();
+				System.out.println("Copelabs" + id);
+				plotPerDay(id, i);
+				// plotAllInterval(id, DAYS_INTERVAL);
+			}
 		}
 	}
 

@@ -34,7 +34,7 @@ public class HourOfDayAxis extends NumberAxis {
 		state.setTicks(ticks);
 
 		/* Last x point */
-		ValueTick tick = ticks.get(ticks.size() - 1);
+		ValueTick tick = (ticks.size() != 0) ? ticks.get(ticks.size() - 1) : ticks.get(0);
 		float[] prevAnchorPoint = calculateAnchorPoint(tick, cursor, dataArea, edge);
 		double xmax = prevAnchorPoint[0];
 		double max_minute = tick.getValue();
